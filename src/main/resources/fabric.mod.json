@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "wm-logo-builder",
+  "version": "${version}",
+  "name": "Watchmen Logo Builder",
+  "description": "Addon that builds schematics",
+  "authors": [
+    "Nedarym"
+  ],
+  "contact": {
+    "sources": "https://github.com/nedarim2005/wm-logo-addon"
+  },
+  "icon": "assets/template/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "meteor": [
+      "com.watchmen.addon.WmLogoBuilder"
+    ]
+  },
+  "mixins": [
+    "wm-logo-builder.mixins.json"
+  ],
+  "custom": {
+    "meteor-client:color": "225,25,25",
+    "modmenu": {
+      "parent": {
+        "id": "meteor-client"
+      }
+    }
+  },
+  "depends": {
+    "java": ">=${jdk_version}",
+    "minecraft": "${minecraft_version}",
+    "meteor-client": "*"
+  }
+}
