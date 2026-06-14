@@ -1,6 +1,7 @@
 package com.watchmen.addon;
 
 import com.watchmen.addon.modules.LogoBuilder;
+import com.watchmen.addon.modules.VerticalBuilder;
 import com.mojang.logging.LogUtils;
 import meteordevelopment.meteorclient.addons.GithubRepo;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
@@ -20,7 +21,8 @@ public class WmLogoBuilder extends MeteorAddon {
     public void onInitialize() {
         LOG.info("Initializing Meteor Watchmen Logo Builder");
 
-        Modules.get().add(new LogoBuilder());
+        // Modules.get().add(new LogoBuilder());
+        Modules.get().add(new VerticalBuilder());
     }
 
     @Override
