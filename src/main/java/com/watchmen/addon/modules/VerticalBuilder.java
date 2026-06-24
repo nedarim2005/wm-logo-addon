@@ -1,5 +1,6 @@
 package com.watchmen.addon.modules;
 
+import com.watchmen.addon.LeaderboardClient;
 import com.watchmen.addon.WmLogoBuilder;
 import com.watchmen.addon.schematic.Schematic;
 
@@ -47,6 +48,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 public class VerticalBuilder extends Module {
@@ -121,6 +124,13 @@ public class VerticalBuilder extends Module {
         .defaultValue(new SettingColor(100, 170, 255, 180)).visible(render::get).build());
 
     private Schematic schematic;
+    private final LeaderboardClient leaderboard = new LeaderboardClient();
+    private String schematicHash;
+    private final ExecutorService httpExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "wm-leaderboard");
+        t.setDaemon(true);
+        return t;
+    });
     private int delayTimer;
     private int tickCounter;
 
@@ -190,6 +200,9 @@ public class VerticalBuilder extends Module {
             schematic = loaded;
             computeOrientation();
             announcedComplete = false;
+            schematicHash = LeaderboardClient.canonicalHash(loaded);
+            WmLogoBuilder.LOG.info("[leaderboard] schematic hash={}", schematicHash);
+            startLeaderboardSession();
             int thickness = 1 + Math.min(relMaxX - relMinX, relMaxZ - relMinZ);
             info("Loaded %s (%d blocks, %d tall, %d thick).",
                 name, schematic.entries.size(), relMaxY - relMinY + 1, thickness);
@@ -203,13 +216,43 @@ public class VerticalBuilder extends Module {
         if (isActive()) computeOrientation();
     }
 
+    // leaderboard
+    private void startLeaderboardSession() {
+        if (mc.player == null || schematicHash == null) return;
+        String pid = mc.player.getUUID().toString();
+        String name = mc.player.getName().getString();
+        String hash = schematicHash;
+        httpExecutor.submit(() -> {
+            boolean ok = leaderboard.start(pid, name, hash);
+            WmLogoBuilder.LOG.info("[leaderboard] start ok={}", ok);
+        });
+    }
+
+    private void reportCompletion() {
+        if (mc.player == null || schematicHash == null) {
+            WmLogoBuilder.LOG.warn("[leaderboard] completion skipped (player/hash null)");
+            return;
+        }
+        String pid = mc.player.getUUID().toString();
+        String hash = schematicHash;
+        int blocks = schematic == null ? 0 : schematic.entries.size();
+        httpExecutor.submit(() -> {
+            WmLogoBuilder.LOG.info("[leaderboard] reporting completion blocks={}", blocks);
+            leaderboard.complete(pid, hash, blocks);
+        });
+    }
+
     @EventHandler
     private void onTick(TickEvent.Pre event) {
         if (schematic == null || mc.player == null || mc.level == null) return;
         tickCounter++;
 
         if (remaining() == 0) {
-            if (!announcedComplete) { info("Schematic complete, disabling."); announcedComplete = true; }
+            if (!announcedComplete) {
+                info("Schematic complete, disabling.");
+                announcedComplete = true;
+                reportCompletion();
+            }
             toggle();
             return;
         }
